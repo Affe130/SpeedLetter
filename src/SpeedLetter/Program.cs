@@ -20,13 +20,22 @@ namespace SpeedLetter
         public static string rootPath;
         private static string settingsPath;
 
-        public Game game = new();
+        public static Game game = new();
 
         static void Main(string[] args)
         {
-            rootPath = @"C:\Users\alfre\Desktop\SpeedLetterOld\build\";
+            rootPath = Directory.GetCurrentDirectory();
             settingsPath = Path.Combine(rootPath, "settings.json");
-            new Program().RunBotAsync().GetAwaiter().GetResult();
+
+            try
+            {
+                new Program().RunBotAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                Console.WriteLine($"The bot token is not correct, (Have you changed it in settings.json?)");
+                Console.ReadKey();
+            }
         }
 
         public async Task RunBotAsync()
@@ -42,7 +51,7 @@ namespace SpeedLetter
 
             client.Log += Log;
 
-            await client.SetGameAsync($"{this.settings.CommandPrefix}help");
+            await client.SetGameAsync($"{settings.CommandPrefix}help");
             await client.SetStatusAsync(UserStatus.Online);
 
             await RegisterCommandsAsync();
@@ -85,15 +94,23 @@ namespace SpeedLetter
                     Log($"Error: {result.Error} Reason: {result.ErrorReason}");
                 }
             }
-            else if (game.IsActive && message.ToString().Length == 1)
+            else if (game.IsActive && message.ToString().Length == 1 && game.CurrentRound < game.TotalRounds)
             {
                 if(message.ToString() == game.CurrentLetter)
                 {
                     Log($"Letter: {message} From: {message.Author} Correct: True");
-                    Random random = new();
-                    this.game.CurrentLetter = Char.ToString((char)random.Next(97, 122));
-                    await Task.Delay(2000);
-                    await message.Channel.SendMessageAsync(this.game.CurrentLetter);
+                    if (game.CurrentRound < game.TotalRounds)
+                    {
+                        Random random = new();
+                        game.CurrentLetter = Char.ToString((char)random.Next(97, 122));
+                        await Task.Delay(2000);
+                        await message.Channel.SendMessageAsync(game.CurrentLetter);
+                    }
+                    else
+                    {
+                        await message.Channel.SendMessageAsync($"Game ended!");
+                    }
+                    game.CurrentRound++;
                 }
                 else
                 {
